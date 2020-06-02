@@ -1,0 +1,21 @@
+# Default values for network-policy.
+# This is a YAML-formatted file.
+incomingNetworkPolicy:
+  ## Enable creation of Incoming NetworkPolicy resources.
+  ##
+  enabled: true
+  whitelist:
+    namespacePurposeLabels:
+      - development
+      - nginx
+    networks:
+    # - 10.240.0.0/16
+    # Service CIDR
+      - 10.0.0.0/16
+outgoingNetworkPolicy:
+  ## Enable creation of Incoming NetworkPolicy resources.
+  enabled: false
+  whitelist:
+    networks:
+    # - 10.240.0.0/16
+    # - 10.10.0.0/16

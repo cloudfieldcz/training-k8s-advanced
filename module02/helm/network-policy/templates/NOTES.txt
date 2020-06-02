@@ -1,0 +1,20 @@
+Network incoming and outgoing policies applied.
+Helm chart created: {{ .Release.Name }}.
+{{ if .Values.incomingNetworkPolicy.enabled }}
+Incoming policies enabled.
+Whitelisted namespace labels:
+{{- range .Values.incomingNetworkPolicy.whitelist.namespacePurposeLabels }}
+ - purpose: {{ . }}
+{{- end }}
+{{ else }}
+Incoming policies disabled.
+{{- end }}
+{{ if .Values.outgoingNetworkPolicy.enabled }}
+Outgoing policies enabled.
+Whitelisted networks:
+{{- range .Values.outgoingNetworkPolicy.whitelist.networks }}
+ - {{ . }}
+{{- end }}
+{{ else }}
+Outgoing policies disabled.
+{{- end }}

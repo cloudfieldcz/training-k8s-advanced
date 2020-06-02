@@ -1,0 +1,49 @@
+kind: NetworkPolicy
+apiVersion: {{ include "network-policy.apiVersion" . }}
+metadata:
+  name: network-policy
+  labels:
+    {{- include "network-policy.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  ingress:
+  {{- if .Values.incomingNetworkPolicy.enabled }}
+  - from:
+  {{- range .Values.incomingNetworkPolicy.whitelist.networks }}
+    - ipBlock:
+        cidr: {{ . }}
+  {{- end }}
+  {{- range .Values.incomingNetworkPolicy.whitelist.namespacePurposeLabels }}
+    - namespaceSelector:
+        matchLabels:
+          purpose: {{ . }}
+  {{- end }}
+  {{ else }}
+  - {}
+  {{- end }}
+  egress:
+  {{- if .Values.outgoingNetworkPolicy.enabled }}
+  # Enable to current namespace only
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          purpose: {{ .Release.Namespace  }}
+  # Enable to a special IP block (e.g. vnet used for DB)
+  {{- range .Values.outgoingNetworkPolicy.whitelist.networks }}
+  - to:
+    - ipBlock:
+        cidr: {{ . }}
+    # Enable to any DNS server
+  # For whitelisting K8s DNS only, check this page: https://www.stackrox.com/post/2020/01/kubernetes-egress-network-policies/
+    ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+  {{- end }}
+  {{ else }}
+  - {}
+  {{- end }}
+  policyTypes:
+    - Ingress
+    - Egress
