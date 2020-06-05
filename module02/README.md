@@ -95,7 +95,8 @@ helm install nginx-ingress-dev ingress-nginx/ingress-nginx --namespace nginx-ing
 # Get ingress public IP
 export INGRESS_IP=$(kubectl get service nginx-ingress-ingress-nginx-controller  -n nginx-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 export INGRESS_DEV_IP=$(kubectl get service nginx-ingress-dev-ingress-nginx-controller  -n nginx-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-echo "You will be able to access application on this URL: http://${INGRESS_IP}.xip.io"
+echo "You will be able to access prod application on this URL: http://${INGRESS_IP}.xip.io"
+echo "You will be able to access dev application on this URL: http://${INGRESS_DEV_IP}.xip.io"
 
 
 # deploy from ACR helm repository
@@ -127,7 +128,7 @@ helm --namespace production delete network-policy
 ## How to connect to a K8s node using SSH 
 ```bash
 # Run an alpine container image and attach a terminal session to it. This container can be used to create an SSH session with any node in the AKS cluster:
-kubectl run --rm -it --image=alpine network-policy --namespace development --generator=run-pod/v1 
+kubectl run --generator=run-pod/v1 -it --rm aks-ssh --image=debian
 
 # Install ssh client
 apt-get update && apt-get install openssh-client -y
