@@ -4,7 +4,7 @@
 
 ### [01 - Advanced K8S scenarios](module01/README.md)
 
-### [02 - helm](module02/README.md)
+### [02 - Network policies with HELM](module02/README.md)
 
 ### [03 - Azure DevSpaces](module03/README.md)
 
