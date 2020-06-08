@@ -1,4 +1,5 @@
 # Network policies with HELM
+This example shows a deployment of two environments into your AKS cluster and making both of environments more secure.
 
 ```bash
 # goto directory for this lab

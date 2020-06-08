@@ -1,5 +1,6 @@
-# Azure web app demo
-
+# Azure Dev Spaces demo
+This project shows a simple example using Azure Dev Spaces. 
+You can seamlessly test your code in your cluster.
 ```bash
 # goto directory for this lab
 cd ../module03
@@ -49,7 +50,7 @@ azds space select -n dev/azureuser2 -y
 azds list-uris
 ```
 
-## Make changes to our code
+## Make changes to our code and deploy changes
 
 ```bash
 cd ../BikeSharingWeb/
@@ -60,6 +61,7 @@ azds up
 ```
 1. Open web and check deployed changed
 2. Check namespace to see azureuser2 namespace and bikesharingweb in it.
+
 ## Clean dev spaces
 ```bash
 azds space remove -n dev/azureuser1 -y
