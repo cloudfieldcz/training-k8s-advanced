@@ -128,16 +128,20 @@ helm --namespace production delete network-policy
 ## How to connect to a K8s node using SSH 
 ```bash
 # Run an alpine container image and attach a terminal session to it. This container can be used to create an SSH session with any node in the AKS cluster:
-kubectl run --generator=run-pod/v1 -it --rm aks-ssh --image=debian
+kubectl run --generator=run-pod/v1 -it --rm aks-ssh --image=debian -n development
 
 # Install ssh client
-apt-get update && apt-get install openssh-client -y
+apt-get update && apt-get install openssh-client wget -y
 
 # Copy private key file to a remote debian
 kubectl cp ~/.ssh/test/id_rsa $(kubectl get pod -l run=aks-ssh -o jsonpath='{.items[0].metadata.name}' -n development):/id_rsa -n development
 
 # Change PK file permissions
 chmod 0600 id_rsa
+
+# Try to call existing services
+wget --timeout=5  --tries=1 -qO-  http://myrelease-myapp-todo.development:8080/api/todo
+wget --timeout=5  --tries=1 -qO-  http://myrelease-myapp-todo.production:8080/api/todo
 
 # Connect to node
 ssh -i id_rsa azureuser@10.240.0.4
