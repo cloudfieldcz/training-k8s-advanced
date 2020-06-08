@@ -19,7 +19,7 @@ SP_PASSWORD=$(echo $SP | jq -r .password)
 az aks create -g $RESOURCE_GROUP -n aks-dev-spaces \
     --kubernetes-version 1.16.9 \
     --location $LOCATION \
-    --generate-ssh-keys \
+    --node-count 2 \
     --service-principal $CLIENT_ID \
     --client-secret $SP_PASSWORD
 
