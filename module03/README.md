@@ -5,7 +5,7 @@ You can seamlessly test your code in your cluster.
 # goto directory for this lab
 cd ../module03
 ```
-## Creating AKS inside a custom VNET
+## Creating AKS
 ```bash
 # variables
 source ./rc
