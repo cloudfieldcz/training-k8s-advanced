@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hello-app-wortner
+  labels:
+    app: hello-app-wortner
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: "/"
+spec:
+  rules:
+    - host: $INGRESS_IP.xip.io
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: hello-app-wortner
+              servicePort: 8080

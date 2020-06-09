@@ -1,0 +1,39 @@
+# install ArgoCD
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# open ArgoCD to public
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+
+export RESOURCE_GROUP_ID=$(az group show --name $RESOURCE_GROUP   --query id --output tsv)
+echo $RESOURCE_GROUP_ID
+
+az ad sp create-for-rbac --scope $RESOURCE_GROUP_ID --role Contributor --sdk-auth
+
+{
+  "clientId": "cb2e8d11-c17c-43d2-b95a-faca3669c272",
+  "clientSecret": "W_lfL1hEl6ZFQ7bm1.PVZLwzuASKFDH1Z4",
+  "subscriptionId": "026c192b-6fc2-4678-84b1-b0d030e062a8",
+  "tenantId": "269a1b55-b8e0-4721-9d49-ae9f28544118",
+  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
+  "resourceManagerEndpointUrl": "https://management.azure.com/",
+  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
+  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
+  "galleryEndpointUrl": "https://gallery.azure.com/",
+  "managementEndpointUrl": "https://management.core.windows.net/"
+}
+
+export ACR_ID=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "id" --output tsv)
+echo $ACR_ID
+
+#user clientId as assignee
+az role assignment create --assignee cb2e8d11-c17c-43d2-b95a-faca3669c272 --scope $ACR_ID --role AcrPush
+
+generate rsa keypair to enable push from github to acr
+
+https://docs.microsoft.com/en-us/azure/container-instances/container-instances-github-action
+
+#Get argocd password
+kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o name | cut -d'/' -f 2
+
+#add repository with generated private key first

@@ -1,0 +1,110 @@
+cd module04
+# variables - please change for your unique names
+export RESOURCE_GROUP=MW
+export RESOURCE_GROUP_OTHER=MW-EXT
+export MYUNIQUENAME=msftwortner
+export AKS_CLUSTER_NAME=${MYUNIQUENAME}aks
+export ACR_NAME=${MYUNIQUENAME}acr
+export LOCATION="northeurope"
+az group create --location ${LOCATION} --name ${RESOURCE_GROUP}
+
+# acr 
+az acr create --name $ACR_NAME --resource-group $RESOURCE_GROUP --sku Basic --location ${LOCATION} --admin-enabled true
+export ACR_URL=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "loginServer" --output tsv)
+export ACR_KEY=$(az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "passwords[0].value" --output tsv)
+export ACR_ID=$(az acr show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "id" --output tsv)
+
+# to be able to specify cluster group inside my group with --node-resource-group
+az extension add --name aks-preview
+# aks
+az aks create --resource-group ${RESOURCE_GROUP} --name ${AKS_CLUSTER_NAME} \
+  --no-ssh-key --kubernetes-version 1.16.9 \
+  --node-count 2 --node-vm-size Standard_B2s \
+  --location ${LOCATION} --node-resource-group ${RESOURCE_GROUP_OTHER}
+az aks enable-addons --addons monitoring --name ${AKS_CLUSTER_NAME} --resource-group ${RESOURCE_GROUP}
+
+export CLIENT_ID=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER_NAME --query "servicePrincipalProfile.clientId" --output tsv)
+
+# kube config
+az aks get-credentials --admin --name ${AKS_CLUSTER_NAME} --resource-group ${RESOURCE_GROUP}
+
+# patch kubernetes configuration to be able to access dashboard (only for demonstration)
+kubectl delete clusterrolebinding kubernetes-dashboard
+kubectl create clusterrolebinding kubernetes-dashboard \
+  -n kube-system --clusterrole=cluster-admin \
+  --serviceaccount=kube-system:kubernetes-dashboard
+
+# access Kubernetes dashboard (http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#/login)
+echo $(kubectl config view  -o=jsonpath='{.users[?(@.name=="clusterAdmin_MW_msftwortneraks")].user.token}')
+az aks browse --resource-group ${RESOURCE_GROUP} --name ${AKS_CLUSTER_NAME}
+
+
+
+# Create role assignment enable aks to use acr
+az role assignment create --assignee $CLIENT_ID --role AcrPull --scope $ACR_ID
+
+az extension add -n application-insights
+az monitor app-insights component create --app hello --location ${LOCATION}  --resource-group ${RESOURCE_GROUP} --application-type web
+export INSTRUMENTATION_KEY=$(az monitor app-insights component show --app hello --resource-group ${RESOURCE_GROUP} --query "instrumentationKey")
+echo $INSTRUMENTATION_KEY
+
+az acr build --registry $ACR_NAME --build-arg INSTRUMENTATION_KEY=$INSTRUMENTATION_KEY --image hello:v1 src/ 
+
+#testing the app
+  #kubectl run hello --image=$ACR_URL/hello:v1 --port=8080 --image-pull-policy Always 
+  #kubectl expose pod/hello --type=LoadBalancer
+
+  #kubectl delete pod hello
+  #kubectl delete svc hello
+  #kubectl port-forward pod/hello  8080:3000
+
+# enable ingress
+# create namespace
+kubectl create namespace nginx-ingress
+
+# update helm repos
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update 
+
+# install ingress
+helm install nginx-ingress ingress-nginx/ingress-nginx --namespace nginx-ingress
+export INGRESS_IP=$(kubectl get service nginx-ingress-ingress-nginx-controller -n nginx-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo $INGRESS_IP
+
+sudo apt install gettext
+kubectl apply -f deploy/app-deploy.yaml
+kubectl apply -f deploy/app-svc.yaml
+envsubst < deploy/app-ing.yaml | kubectl apply -f -
+
+
+#prometheus
+https://www.infrakloud.com/2019/03/setup-prometheus-grafana-monitoring-on-azure-kubernetes-cluster-aks/
+helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+# kubectl create namespace prometheus
+# helm install ms-prometheus --namespace prometheus stable/prometheus --version 11.4.0
+
+
+# export POD_NAME_PROMETHEUS=$(kubectl get pods --namespace prometheus -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
+# echo $POD_NAME_PROMETHEUS
+# kubectl --namespace prometheus port-forward $POD_NAME_PROMETHEUS 9090
+
+# grafana 
+# helm install grafana stable/grafana --set persistence.enabled=true --set persistence.accessModes={ReadWriteOnce} --set persistence.size=8Gi --namespace prometheus
+# kubectl get secret --namespace prometheus grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+# export POD_NAME=$(kubectl get pods --namespace prometheus grafana -o jsonpath="{.items[0].metadata.name}")
+# kubectl --namespace prometheus port-forward $POD_NAME 9000
+
+
+helm install ms-prometheus stable/prometheus-operator
+kubectl port-forward prometheus-ms-prometheus-prometheus-o-prometheus-0 9090:9090
+
+#value of serviceMonitorSelector release tag must be in app-svc.yaml and espcialy in prometheus.yaml
+kubectl get prometheuses.monitoring.coreos.com -oyaml
+
+
+kubectl apply -f deploy/prometheus.yaml
+
+#Access grafana with this default password admin/prom-operator
+kubectl port-forward svc/ms-prometheus-grafana 9090:80
+#install dashboard from https://grafana.com/grafana/dashboards i.e. 11074(kubernetes monitoring) + 11159(nodejs monitoring) in grafana import

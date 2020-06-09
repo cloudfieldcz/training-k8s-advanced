@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-app-wortner
+spec:
+  selector:
+    matchLabels:
+      app: hello-app-wortner   # This label identifies our application, used for filtering output
+      release: ms-prometheus
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hello-app-wortner   # This label identifies our application, used for filtering output
+        release: ms-prometheus
+        type: release    # This label identifies actual release vs. canary etc.
+    spec:
+      securityContext:   # Best practice for security - if possible never run as root (which is default)
+        runAsNonRoot: false     # Make sure container images do not use root
+      containers:
+      - name: hello
+        image: msftwortneracr.azurecr.io/hello:v1   # Best practice - always define specific tag, do not rely on latest
+        imagePullPolicy: Always    # Best practice for security - user will no access to image might get it from local cache
+        ports:  # We cannot run on ports <1024 because that would require root
+        - containerPort: 3000
+        resources:    # Best practice for stability
+          limits:    # Always limit resources to keep nodes healthy (eg. prevent memory leak to hurt other containers)
+            cpu: 100m
+            memory: 128Mi
+          requests:     # Always define request so scheduler can decide better about placements (required for node autoscaling)
+            cpu: 100m
+            memory: 128Mi
